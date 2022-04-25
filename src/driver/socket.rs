@@ -1,9 +1,12 @@
+use libc::{c_int, IPPROTO_TCP, TCP_NODELAY};
+
 use crate::{
     buf::{IoBuf, IoBufMut},
     driver::{Op, SharedFd},
 };
 use std::{
     io,
+    mem::size_of,
     net::SocketAddr,
     os::unix::io::{AsRawFd, IntoRawFd, RawFd},
     path::Path,
@@ -130,6 +133,18 @@ impl Socket {
 
     pub(crate) fn listen(&self, backlog: libc::c_int) -> io::Result<()> {
         syscall!(listen(self.as_raw_fd(), backlog))?;
+        Ok(())
+    }
+
+    pub(crate) fn set_nodelay(&self, v: bool) -> io::Result<()> {
+        let v = v as c_int;
+        syscall!(setsockopt(
+            self.as_raw_fd(),
+            IPPROTO_TCP,
+            TCP_NODELAY,
+            &v as *const libc::c_int as *const libc::c_void,
+            size_of::<libc::c_int>() as libc::socklen_t
+        ))?;
         Ok(())
     }
 }

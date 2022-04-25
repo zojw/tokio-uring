@@ -57,4 +57,9 @@ impl TcpStream {
     pub async fn write<T: IoBuf>(&self, buf: T) -> crate::BufResult<usize, T> {
         self.inner.write(buf).await
     }
+
+    /// Set tcp no delay.
+    pub async fn set_tcp_nodelay(&self, v: bool) -> io::Result<()> {
+        self.inner.set_nodelay(v)
+    }
 }
