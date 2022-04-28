@@ -1,4 +1,4 @@
-use std::{env, net::SocketAddr};
+use std::{env, net::SocketAddr, time::Duration};
 
 use tokio_uring::net::TcpListener;
 
@@ -14,17 +14,28 @@ fn main() {
     tokio_uring::start(async {
         let listener = TcpListener::bind(socket_addr).unwrap();
 
+        println!("listen: {}", args[1]);
+
         loop {
             let (stream, socket_addr) = listener.accept().await.unwrap();
             tokio_uring::spawn(async move {
-                let buf = vec![1u8; 128];
+                loop {
+                    let buf = vec![1u8; 128];
 
-                let (result, buf) = stream.write(buf).await;
-                println!("written to {}: {}", socket_addr, result.unwrap());
+                    let fut = tokio::time::timeout(Duration::from_secs(10), stream.read(buf));
 
-                let (result, buf) = stream.read(buf).await;
-                let read = result.unwrap();
-                println!("read from {}: {:?}", socket_addr, &buf[..read]);
+                    let res = fut.await;
+
+                    if res.is_err() {
+                        println!("wait read timeouted, and close connection???");
+                        return;
+                    }
+
+                    let (result, buf) = res.unwrap();
+
+                    let read = result.unwrap();
+                    println!("read from {}: {:?}", socket_addr, &buf[..read]);
+                }
             });
         }
     });
